@@ -3,11 +3,153 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-9ndCyUaIbzAi2FUVXJi0CjmCapSmO7SnpJef0486qhLnuZ2cdeRhO02iuK6FUUVM" crossorigin="anonymous">
+    <!-- Bootstrap CSS -->
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <title>Олимпиада</title>
 </head>
 <body>
-    <h1>Hello, world!</h1>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js" integrity="sha384-geWF76RCwLtnZ8qwWowPQNguL3RmwHVBC9FhGdlKrxdiJJigb/j/68SIy3Te4Bkz" crossorigin="anonymous"></script>
+    <div class="container">
+        <div class="row justify-content-center mt-5">
+            <div class="col-md-6">
+                <h3 class="text-center">Олимпиада</h3>
+                <form id="participantsForm">
+                    <div class="form-group">
+                        <label for="participantsInput">Участники</label>
+                        <!-- Используем регулярное выражение для паттерна -->
+                        <input type="text" class="form-control" id="participantsInput" placeholder="Введите имена участников через запятую" pattern="[а-яА-Я\s,]+" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Добавить</button>
+                </form>
+            </div>
+        </div>
+        <div class="row justify-content-center mt-5">
+            <div class="col-md-6">
+                <table class="table table-striped" id="participantsTable" style="display: none;">
+                    <thead>
+                        <tr>
+                            <th scope="col" onclick="sortTable(0)">id</th>
+                            <th scope="col" onclick="sortTable(1)">Имя</th>
+                            <th scope="col" onclick="sortTable(2)">Очки</th>
+                        </tr>
+                    </thead>
+                    <tbody id="participantsBody">
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+<!-- Bootstrap JS -->
+<script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@popperjs/core@1.16.1/dist/umd/popper.min.js"></script>
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+<script>
+    let participants = [];
+    let index = 1;
+    document.getElementById("participantsForm").addEventListener("submit", function(event) {
+        event.preventDefault();
+        
+        // Имена из плейсхолдера 
+        let input = document.getElementById("participantsInput");
+        let names = input.value.trim().split(',');
+
+        let invalidNames = names.filter(name => !/^[\u0400-\u04FF\s]+$/.test(name));
+        if (invalidNames.length > 0) {
+            let errorMessage = `Некорректные имена: ${invalidNames.join(', ')}`;
+            showAlert("Ошибка", errorMessage);
+            return;
+        }
+
+        for (let name of names) {
+            participants.push({ id: index, name: name.trim(), score: 0 });
+            index++;
+        }
+
+        input.value = "";
+        input.focus();
+
+        displayParticipants();
+    });
+
+    function displayParticipants() {
+        let tableBody = document.getElementById("participantsBody");
+        console.log(tableBody);
+        for (let i = 0; i < participants.length; i++){
+            let participant = participants[i];
+            try {
+                score = document.getElementById(participant.id+"score").innerText;
+                participant.score = score;
+            } catch (error) {
+                
+                continue;
+            }
+        }
+        tableBody.innerHTML = "";
+
+        for (let i = 0; i < participants.length; i++) {
+            let participant = participants[i];
+            console.log(participant);
+            let row = `
+                <tr>
+                    <th scope="row">${participant.id}</th>
+                    <td>${participant.name}</td>
+                    <td id="${participant.id}score">${participant.score}</td>
+                </tr>
+            `;
+            tableBody.innerHTML += row;
+            if (participant.score == 0){
+                generateScores(participant.id);
+            }
+        }
+
+        document.getElementById("participantsTable").style.display = "table";
+    }
+
+    function sortTable(column) {
+        let sortedParticipants = participants.sort(function(a, b) {
+            if (column === 0) {
+                return a.id - b.id;
+            } else if (column === 1) {
+                return a.name.localeCompare(b.name);
+            }else if (column === 2) {
+                return a.score - b.score;
+            }
+        });
+
+        participants = sortedParticipants;
+
+        displayParticipants();
+    }
+
+    function showAlert(title, message) {
+        let modalBody = document.getElementById("modalBody");
+        modalBody.textContent = message;
+
+        $('#myModal').modal('show');
+    }
+
+    function generateScores(id) {
+        // Отправляем ajax-запрос на файл "generate_scores.php"
+        $.ajax({
+            url: "score_generator.php",
+            type: "POST",
+            dataType: "json",
+            success: function(response) {
+                if (response.success) {
+                    // Очки успешно сгенерированы, добавляем строку в таблицу
+                    var cell = document.getElementById(id + "score");
+                    cell.innerHTML = '<td id=\"' + id + 'score\">' + response.score + "</td>";
+                } else {
+                    // Ошибка при генерации очков
+                    console.log(response.error);
+                }
+            },
+            error: function(jqXHR, textStatus, errorThrown) {
+                console.log(textStatus, errorThrown);
+            }
+        })
+        return true;
+    }
+</script>
 </body>
 </html>
